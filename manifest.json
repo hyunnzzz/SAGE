@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "사기탐지 서비스",
+  "version": "1.0",
+  "description": "유튜브 투자 영상 신뢰성 분석 및 커뮤니티 기능",
+  
+  "action": {
+    "default_title": "사기탐지 서비스"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["styles/community.css", "styles/content.css", "styles/blur.css"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "images/loading1.jpg",
+        "images/loading2.jpg", 
+        "images/loading3.jpg",
+        "modules/*.js",
+        "kb_daliy.pdf",
+        "kb_daliy/*.jpg"
+      ],
+      "matches": ["*://*.youtube.com/*"]
+    }
+  ],
+  
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "http://localhost:5000/*",
+    "http://127.0.0.1:5000/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "http://localhost:5000/",
+    "http://127.0.0.1:5000/",
+    "https://kb-ai-challenge-e37c4-default-rtdb.asia-southeast1.firebasedatabase.app/*"
+  ],
+  
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:5000 http://127.0.0.1:5000 https://*.firebaseio.com https://*.googleapis.com https://kb-ai-challenge-e37c4-default-rtdb.asia-southeast1.firebasedatabase.app"
+  }
+}
