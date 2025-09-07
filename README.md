@@ -1,215 +1,107 @@
-# 🛡️ YouTube Investment Video Reliability Analyzer
+## YouTube Investment Video Credibility Analyzer
 
-A comprehensive system for analyzing the reliability and credibility of investment-related YouTube videos using AI and various verification methods.
+AI 기반 유튜브 투자 영상 신뢰성 분석 시스템입니다. 유튜브 영상의 스크립트를 분석하여 사기 패턴을 감지하고, 종목 정보를 DART/공식 데이터로 검증하며, 업로더 신분도 확인합니다. 크롬 확장프로그램과 로컬 백엔드(Flask)로 구성됩니다.
 
-## 📋 Features
+## Tech Stack
+- **Backend**: Python, Flask(CORS), Hugging Face Inference API(DeepSeek V3)
+- **Frontend**: Chrome Extension (Manifest V3)
+- **APIs**: DART API, Serper API, Hugging Face API
+- **Database**: Firebase Realtime DB(신고 집계), JSON/NPY 캐시
+- **AI/ML**: Sentence Transformers, scikit-learn
 
-- **Stock Information Verification**: Validates mentioned stocks against official DART database
-- **Content Analysis**: Uses LLM to analyze script content for investment advice quality
-- **Historical Comparison**: Compares claims made in videos with actual market data
-- **Uploader Verification**: Checks if uploaders are registered financial institutions
-- **Legal Compliance**: Verifies compliance with investment advisory regulations
-- **Related Video Recommendations**: Suggests related educational content
+## 폴더 구조
+```
+LLM/                    # 백엔드 서버 및 AI 로직
+  app.py                # Flask API 서버 (비동기/폴링 포함)
+  main.py               # 통합 시스템 초기화(LLM, RAG, Web, Stock 등)
+  llm_handler.py        # DeepSeek 호출, 업로더 신분 검증, 최종 분석 생성
+  pdf_processor.py      # PDF RAG(청크/임베딩/검색, 캐시 지원)
+  web_searcher.py       # Serper 기반 신뢰도 필터 웹검색
+  stock_checker.py      # DART(부채비율), 투자주의/경고/위험, 예비심사 검증
+  historical_checker.py # 업로드 시점/현재 시점 비교 분석
+  recommend_video.py    # 키워드 기반 영상 추천
+  script_cleaner.py     # 경량 스크립트 정제
+  requirements.txt      # 파이썬 의존성
 
-## 🚀 Quick Start
+extension/              # 크롬 확장프로그램 (YouTube content script)
+  manifest.json         # MV3, host 권한 및 CSP 포함
+  content.js            # 유튜브 페이지에서 스크립트 추출/표시
+  background.js         # Firebase 신고 집계 관리
+  modules/              # UI, Firebase 핸들러
+  styles/               # 오버레이 스타일
+  images/               # 로딩 이미지
+```
 
-### Prerequisites
 
-- Python 3.8+
-- Required API keys (see Environment Setup)
+### 사전 준비
+- 권장 Python: 3.10+ (Windows 10/11 확인)
+- `LLM/requirements.txt` 설치 필요
 
-### Installation
 
-1. **Clone the repository**
+### 의존성 설치 및 서버 실행
 ```bash
-git clone <repository-url>
 cd LLM
-```
-
-2. **Create virtual environment**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install dependencies**
-```bash
 pip install -r requirements.txt
-```
-
-4. **Environment Setup**
-```bash
-# Copy template and configure
-cp .env.example .env
-# Edit .env with your actual API keys
-```
-
-5. **Run the application**
-```bash
 python app.py
 ```
 
-## 🔧 Environment Variables
 
-Create a `.env` file with the following variables:
 
-```env
-# Required API Keys
-HUGGINGFACE_TOKEN=your_huggingface_token_here
-SERPER_API_KEY=your_serper_api_key_here  
-DART_API_KEY=your_dart_api_key_here
+### 데이터/RAG 준비(선택)
+- PDF RAG: `LLM/pdfs/` 폴더에 PDF를 넣으면 서버 기동 시 자동 로드됩니다(캐시: `LLM/cache/`).
+- 종목 검증: `LLM/data/` 경로에 다음 파일이 있을 경우 정확도가 높아집니다.
+  - `제도권금융회사_전처리.csv`
+  - `유사투자자문업자_전처리.csv`
+  - `투자주의종목_3년.xls`, `투자경고종목_3년.xls`, `투자위험종목_3년.xls`
+- DART 기업코드(`corpCode.xml`)는 자동 다운로드/캐시됩니다.
 
-# Optional Configuration
-FLASK_ENV=production
-PORT=5000
-CACHE_DIR=cache
-MAX_MEMORY_MB=500
-```
 
-### API Key Sources
 
-- **Hugging Face Token**: [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
-- **Serper API Key**: [https://serper.dev/](https://serper.dev/)
-- **DART API Key**: [https://opendart.fss.or.kr/](https://opendart.fss.or.kr/)
 
-## 📁 Project Structure
+# 1) Backend Server 실행
 
-```
-LLM/
-├── app.py                 # Flask web API
-├── main.py               # Main integration system
-├── config.py             # Configuration management
-├── llm_handler.py        # LLM processing logic
-├── pdf_processor.py      # RAG document processing
-├── web_searcher.py       # Web search functionality
-├── stock_checker.py      # Stock verification
-├── historical_checker.py # Historical data analysis
-├── script_cleaner.py     # Text preprocessing
-├── memory_optimizer.py   # Memory optimization for AWS
-├── recommend_video.py    # Video recommendation system
-├── data/                 # Data files (Excel, CSV)
-├── cache/               # Cached embeddings and data
-├── pdfs/                # PDF documents for RAG
-└── requirements.txt     # Python dependencies
-```
+1. API 키 설정(3개)
+API 할당량 초과시 main.py 파일에서 다음 값들을 새로운 API 키로 설정해야 함
+각 홈페이지 방문 시 무료 발급 가능
 
-## 🌐 API Endpoints
+- HF_TOKEN (HuggingFace)
+- serper_api_key (Serper)
+- dart_api_key (DART)
 
-### Health Check
-```
-GET /health
-```
 
-### Analyze Video Script
-```
-POST /analyze
-Content-Type: application/json
+2. 서버 실행
+명령 프롬프트(터미널)에서 LLM폴더 경로 설정 후
 
-{
-  "script": "Video transcript text",
-  "upload_date": "2024-01-15",
-  "channel_name": "Channel Name"
-}
-```
+python app.py 
+입력
 
-### Get Video Recommendations
-```
-POST /recommend_videos
-Content-Type: application/json
 
-{
-  "current_title": "Current video title",
-  "top_k": 5
-}
-```
 
-## ☁️ AWS Deployment
+## 2) Chrome Extension 테스트
+1. 크롬 주소창에 `chrome://extensions/` 이동
+2. 우측 상단 "개발자 모드" 활성화
+3. "압축해제된 확장 프로그램을 로드합니다" 클릭 후 `extension/` 폴더 선택
+4. YouTube 접속 후 투자 관련 영상에서 동작 확인
 
-### For AWS EC2 t2.micro (Free Tier)
+# 주의 #
+- 확장 프로그램 로드 직후 첫 시도에서 UI가 보이지 않으면 새로고침하세요.
 
-1. **Upload code to EC2**
-2. **Run deployment script**
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
+메모:
+- 백엔드가 `http://localhost:5000`에서 실행 중이어야 합니다. `manifest.json`의 `host_permissions`/`CSP`에 해당 주소가 이미 포함되어 있습니다.
+- 신고 집계는 Firebase Realtime DB(`background.js`)를 사용합니다(프로젝트 설정 포함).
 
-3. **Verify deployment**
-```bash
-python check_deployment.py
-```
+## 구현상 체크리스트(놓친 부분 점검)
+- **의존성 파일**: `LLM/requirements.txt` 추가됨. 새 환경에서 바로 설치 가능
+- **프레임워크 표기**: 백엔드는 FastAPI가 아닌 Flask 사용. README/문서 표기 정정 완료
+- **API 키 관리**: 실제 운영 시 `LLM/main.py`의 하드코딩 키 제거하고 `.env` 기반으로 수정 권장
+- **RAG 캐시**: `LLM/cache/`에 청크/임베딩 캐시 저장. 배포 환경에서는 쓰기 권한 필요
+- **데이터 파일**: `LLM/data/` 내 전처리 CSV/XLS 파일 존재 여부 확인 필요
+- **포맷 유효성**: 날짜는 `YYYY-MM-DD` 형식 필수(서버에서 검증)
+- **엔드포인트 합의**: 확장프로그램이 사용하는 엔드포인트(주로 `/start_analysis` → `/status`)가 실행 환경과 일치하는지 확인
 
-### Environment Variables for Production
+## 트러블슈팅
+- 분석이 지연/실패: HF/Serper/DART 키의 쿼터를 확인하고 교체(환경변수 업데이트) 후 재시도
+- PDF RAG 미동작: `LLM/pdfs/`에 PDF가 있나 확인. 최초 처리 시 시간이 다소 걸릴 수 있음
+- 종목 정보 미검출: DART 기업코드 캐시(`LLM/cache/corpCode.xml`) 갱신 후 재시도
+- 확장 UI 미표시: 유튜브 페이지를 새로고침하거나 백엔드 서버 상태(`/health`) 확인
 
-Set environment variables in AWS instead of using .env file:
-
-```bash
-export HUGGINGFACE_TOKEN="your_token"
-export SERPER_API_KEY="your_key"
-export DART_API_KEY="your_key"
-```
-
-## 🛠️ Development
-
-### Running Tests
-```bash
-python check_deployment.py localhost 5000
-```
-
-### Memory Optimization
-The system includes automatic memory optimization for AWS t2.micro:
-- Garbage collection tuning
-- Cache size limits
-- Memory usage monitoring
-
-### Adding New Features
-
-1. **PDF Documents**: Add educational PDFs to `pdfs/` folder
-2. **Data Sources**: Update CSV files in `data/` folder
-3. **API Extensions**: Modify `app.py` for new endpoints
-
-## 📊 System Components
-
-### 1. LLM Handler (`llm_handler.py`)
-- Processes video scripts using Hugging Face models
-- Extracts stock mentions
-- Generates reliability analysis
-- Verifies uploader credentials
-
-### 2. Stock Checker (`stock_checker.py`)
-- Validates stocks against DART database
-- Checks investment alerts (caution/warning/risk)
-- Retrieves financial data
-
-### 3. PDF Processor (`pdf_processor.py`)
-- RAG (Retrieval Augmented Generation) system
-- Processes investment guideline documents
-- Semantic search for relevant information
-
-### 4. Web Searcher (`web_searcher.py`)
-- Real-time web search for fact-checking
-- Filters reliable financial sources
-- Provides current market information
-
-## 🚨 Security Notes
-
-- **Never commit `.env` files** with real API keys
-- **Use AWS environment variables** in production
-- **Rotate API keys** regularly
-- **Monitor usage** to prevent API key abuse
-
-## 📝 License
-
-This project is for educational and research purposes.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## 📞 Support
-
-For issues and questions, please check the documentation or create an issue in the repository.
